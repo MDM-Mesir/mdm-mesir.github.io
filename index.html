@@ -59,6 +59,17 @@
     window.addEventListener('online', function () { location.reload(); });
     window.addEventListener('offline', cekKoneksi);
     cekKoneksi();
+    // Penyimpanan kunci login untuk sistem di dalam aplikasi (hanya dari Google Apps Script)
+    window.addEventListener('message', function (e) {
+      var host = '';
+      try { host = new URL(e.origin).hostname; } catch (x) { return; }
+      if (!/\.googleusercontent\.com$/.test(host) || !e.data || !e.data.mdm) return;
+      try {
+        if (e.data.mdm === 'simpan' && e.data.kunci) localStorage.setItem('mdm_kunci_login', e.data.kunci);
+        else if (e.data.mdm === 'hapus') localStorage.removeItem('mdm_kunci_login');
+        else if (e.data.mdm === 'minta') e.source.postMessage({ mdm: 'kunci', kunci: localStorage.getItem('mdm_kunci_login') }, e.origin);
+      } catch (x) {}
+    });
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   </script>
 </body>
