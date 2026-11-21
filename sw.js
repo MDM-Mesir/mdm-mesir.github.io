@@ -1,6 +1,6 @@
 // Service worker MDM: menyimpan "bingkai" aplikasi agar terbuka cepat dan
 // menampilkan halaman offline jika tidak ada internet. Data tetap diambil langsung dari Apps Script.
-var VERSI = 'mdm-v4';
+var VERSI = 'mdm-v5';
 var BERKAS = ['./', 'index.html', 'offline.html', 'manifest.webmanifest', 'firebase-config.js',
   'icons/logo.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png', 'icons/favicon.png'];
