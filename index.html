@@ -47,9 +47,16 @@
     <button onclick="location.reload()">Coba lagi</button>
   </div>
 
+  <div id="izinNotif" style="display:none;position:fixed;left:16px;right:16px;bottom:24px;z-index:4;background:#fff;border-radius:14px;
+       box-shadow:0 4px 18px rgba(0,0,0,.25);padding:16px;font-family:Arial,sans-serif;text-align:center">
+    <div style="margin-bottom:10px">Ketuk tombol di bawah untuk mengizinkan notifikasi MDM di HP ini.</div>
+    <button id="tombolIzin" style="padding:10px 22px;border:0;border-radius:10px;background:#c1603a;color:#fff;font-size:16px">🔔 Izinkan notifikasi</button>
+  </div>
+
   <iframe id="aplikasi" title="MDM" allow="clipboard-write"
           src="https://script.google.com/macros/s/AKfycbwEnv1OC3X4YR0WTin14Cx2yOVhCZMH49UTvy8SSBWKPijsfIRXSxeod0YeTxFbPe8jvw/exec"></iframe>
 
+  <script src="firebase-config.js"></script>
   <script>
     var pembuka = document.getElementById('pembuka');
     function tutupPembuka() { pembuka.style.opacity = 0; setTimeout(function () { pembuka.style.display = 'none'; }, 400); }
@@ -68,8 +75,73 @@
         if (e.data.mdm === 'simpan' && e.data.kunci) localStorage.setItem('mdm_kunci_login', e.data.kunci);
         else if (e.data.mdm === 'hapus') localStorage.removeItem('mdm_kunci_login');
         else if (e.data.mdm === 'minta') e.source.postMessage({ mdm: 'kunci', kunci: localStorage.getItem('mdm_kunci_login') }, e.origin);
+        else if (e.data.mdm === 'notifStatus') e.source.postMessage({ mdm: 'notifStatus', didukung: notifDidukung(),
+          izin: window.Notification ? Notification.permission : 'denied', token: localStorage.getItem('mdm_fcm_token') }, e.origin);
+        else if (e.data.mdm === 'notifAktifkan') aktifkanNotif(e.source, e.origin);
+        else if (e.data.mdm === 'notifMatikan') matikanNotif();
       } catch (x) {}
     });
+
+    // ---------- Notifikasi aplikasi (Firebase Cloud Messaging) ----------
+    var pesanFcm = null;
+    function notifDidukung() {
+      return !!(window.MDM_FIREBASE && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window);
+    }
+    // Pustaka Firebase baru dimuat saat dibutuhkan, agar aplikasi tetap cepat terbuka
+    function muatSkrip(src) {
+      return new Promise(function (ok, gagal) {
+        var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { gagal(new Error('Tidak bisa memuat ' + src)); };
+        document.head.appendChild(s);
+      });
+    }
+    function fcm() {
+      if (pesanFcm) return Promise.resolve(pesanFcm);
+      var v = 'https://www.gstatic.com/firebasejs/10.12.2/';
+      return (window.firebase ? Promise.resolve() : muatSkrip(v + 'firebase-app-compat.js').then(function () { return muatSkrip(v + 'firebase-messaging-compat.js'); }))
+        .then(function () {
+          if (!firebase.apps.length) firebase.initializeApp(MDM_FIREBASE.config);
+          pesanFcm = firebase.messaging();
+          return pesanFcm;
+        });
+    }
+    function namaPerangkat() {
+      var u = navigator.userAgent;
+      var hp = /iPhone|iPad/.test(u) ? 'iPhone' : /Android/.test(u) ? 'Android' : 'Komputer';
+      var br = /Edg\//.test(u) ? 'Edge' : /SamsungBrowser/.test(u) ? 'Samsung' : /CriOS|Chrome/.test(u) ? 'Chrome' : /Safari/.test(u) ? 'Safari' : 'Browser';
+      return hp + ' · ' + br;
+    }
+    function mintaIzin() {
+      return Notification.requestPermission().then(function (p) {
+        if (p !== 'default') return p;
+        // Jika browser tidak menampilkan pertanyaan izin, tampilkan tombol agar pengguna mengetuknya langsung
+        return new Promise(function (selesai) {
+          var kotak = document.getElementById('izinNotif');
+          kotak.style.display = 'block';
+          document.getElementById('tombolIzin').onclick = function () {
+            kotak.style.display = 'none';
+            Notification.requestPermission().then(selesai);
+          };
+        });
+      });
+    }
+    function aktifkanNotif(sumber, asal) {
+      function gagal(alasan) { sumber.postMessage({ mdm: 'notifGagal', alasan: alasan }, asal); }
+      if (!notifDidukung()) { gagal('HP / browser ini belum mendukung notifikasi aplikasi.'); return; }
+      mintaIzin().then(function (p) {
+        if (p !== 'granted') { gagal('Notifikasi tidak diizinkan. Buka pengaturan situs mdm-mesir.github.io di browser, lalu izinkan Notifikasi.'); return; }
+        return Promise.all([navigator.serviceWorker.ready, fcm()]).then(function (h) {
+          return h[1].getToken({ vapidKey: MDM_FIREBASE.vapidKey, serviceWorkerRegistration: h[0] });
+        }).then(function (t) {
+          if (!t) { gagal('Gagal mendaftarkan HP ini. Coba lagi.'); return; }
+          localStorage.setItem('mdm_fcm_token', t);
+          sumber.postMessage({ mdm: 'notifToken', token: t, ket: namaPerangkat() }, asal);
+        });
+      }).catch(function (x) { gagal('Gagal mengaktifkan notifikasi: ' + (x && x.message ? x.message : x)); });
+    }
+    function matikanNotif() {
+      localStorage.removeItem('mdm_fcm_token');
+      if (notifDidukung()) fcm().then(function (m) { return m.deleteToken(); }).catch(function () {});
+    }
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   </script>
 </body>
