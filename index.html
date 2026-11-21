@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>MDM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#c1603a">
+  <meta name="description" content="Aplikasi Ma'had Daar Al Musthofa">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="MDM">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <style>
+    html, body { margin: 0; height: 100%; background: #fff; overflow: hidden; }
+    body { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+    #aplikasi { border: 0; width: 100%; height: 100%; display: block; }
+    #pembuka {
+      position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px; z-index: 2;
+      font-family: Arial, sans-serif; color: #8a4a2c; transition: opacity .4s;
+    }
+    #pembuka img { width: 120px; height: auto; }
+    #pembuka .titik { width: 34px; height: 34px; border: 3px solid #f0d9cc; border-top-color: #c1603a;
+      border-radius: 50%; animation: putar 1s linear infinite; }
+    @keyframes putar { to { transform: rotate(360deg); } }
+    #offline { display: none; position: fixed; inset: 0; background: #fff; z-index: 3;
+      font-family: Arial, sans-serif; text-align: center; padding: 40px 24px; box-sizing: border-box; color: #333; }
+    #offline img { width: 90px; margin-top: 40px; }
+    #offline button { margin-top: 20px; padding: 12px 28px; border: 0; border-radius: 10px;
+      background: #c1603a; color: #fff; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="pembuka">
+    <img src="icons/logo.png" alt="Logo Ma'had Daar Al Musthofa">
+    <div class="titik"></div>
+    <div>Memuat…</div>
+  </div>
+
+  <div id="offline">
+    <img src="icons/logo.png" alt="">
+    <h2>Tidak ada koneksi internet</h2>
+    <p>Aplikasi MDM membutuhkan internet. Periksa koneksi Anda, lalu coba lagi.</p>
+    <button onclick="location.reload()">Coba lagi</button>
+  </div>
+
+  <iframe id="aplikasi" title="MDM" allow="clipboard-write"
+          src="https://script.google.com/macros/s/AKfycbwEnv1OC3X4YR0WTin14Cx2yOVhCZMH49UTvy8SSBWKPijsfIRXSxeod0YeTxFbPe8jvw/exec"></iframe>
+
+  <script>
+    var pembuka = document.getElementById('pembuka');
+    function tutupPembuka() { pembuka.style.opacity = 0; setTimeout(function () { pembuka.style.display = 'none'; }, 400); }
+    document.getElementById('aplikasi').addEventListener('load', tutupPembuka);
+    setTimeout(tutupPembuka, 15000); // jaga-jaga jika event load tidak terpanggil
+    function cekKoneksi() { document.getElementById('offline').style.display = navigator.onLine ? 'none' : 'block'; }
+    window.addEventListener('online', function () { location.reload(); });
+    window.addEventListener('offline', cekKoneksi);
+    cekKoneksi();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
