@@ -112,6 +112,8 @@
   .tambahR2:hover, .hapusR2:hover { background: none; text-decoration: underline; }
   tr.baris2 td { border-top: 0; padding-top: 0; }
   .tambahR2 { display: block; }
+  .tambahR2.sebaris { display: inline; }
+  .komRekap { font-size: 12px; color: #6b5a4a; margin-top: 4px; line-height: 1.4; }
   tr.baris2 .ketK { padding: 0 6px 8px 14px; }
   .pilihK { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; align-items: center; }
   .pilihK button { background: var(--oren-muda); color: var(--oren-tua); border-radius: 14px; padding: 4px 10px; font-size: 12px; width: auto; }
@@ -1044,6 +1046,17 @@
   }
 
   // ---------- Rekap ----------
+  // Komentar tahfiz di Rekap Setoran Tahfiz: 3 terbaru, lalu "lihat semua"
+  let KOM_T = {};
+  function komentarRekapT(ix, semua) {
+    const k = KOM_T[ix] || [];
+    if (!k.length) return '';
+    const tampil = semua ? k : k.slice(0, 3);
+    return '<div class="komRekap">' + tampil.map(function (c) { return '💬 <b>' + tgl(c.pekan) + ':</b> ' + esc(c.isi); }).join('<br>') +
+           (k.length > 3 ? '<br><button type="button" class="tambahR2 sebaris" onclick="lihatKomT(' + ix + ',' + !semua + ')">' +
+                           (semua ? 'ringkas' : 'lihat semua (' + k.length + ')') + '</button>' : '') + '</div>';
+  }
+  function lihatKomT(ix, semua) { el('komT' + ix).innerHTML = komentarRekapT(ix, semua); }
   async function muatRekap() {
     hapusPesan('rPesan');
     const MODUL = val('rModul');
@@ -1066,9 +1079,11 @@
         h += '</table><p class="catatan">Merah = kehadiran sekolah di bawah 80%.</p>';
       } else if (MODUL === 'tahfiz') {
         h = '<table><tr><th>Nama &amp; peta 30 juz</th><th>Ziyadah</th><th>Pekan setor</th><th>Murojaah</th><th>Tasmi\'</th></tr>';
-        data.forEach(function (x) {
+        KOM_T = {};
+        data.forEach(function (x, ix) {
+          KOM_T[ix] = x.komentar || [];
           const peta = '<div class="peta">' + x.peta.map(function (s, j) { return '<span class="' + s + '" title="Juz ' + (j + 1) + '"></span>'; }).join('') + '</div>';
-          h += '<tr><td>' + esc(x.nama) + peta + '</td><td>' + x.halaman + ' hal.<br><span class="catatan">terakhir: ' + (x.terakhir === '' ? '-' : x.terakhir) +
+          h += '<tr><td>' + esc(x.nama) + peta + '<div id="komT' + ix + '">' + komentarRekapT(ix, false) + '</div></td><td>' + x.halaman + ' hal.<br><span class="catatan">terakhir: ' + (x.terakhir === '' ? '-' : x.terakhir) +
                '</span></td><td class="' + (x.minggu && x.mingguSetor < x.minggu ? 'rendah' : '') + '">' + x.mingguSetor + '/' + x.minggu +
                '</td><td>' + x.murojaah + '×</td><td>' + x.juzLulus + ' juz lulus<br><span class="catatan">' + x.tasmi + '× tasmi\'</span></td></tr>';
         });
