@@ -126,9 +126,17 @@
   hr.pisah { border: none; border-top: 2px dashed #ecd9cf; margin: 18px 0 10px; }
   .duaKolom { display: flex; gap: 8px; }
   .duaKolom > div { flex: 1; }
-  .peta { margin-top: 3px; line-height: 0; }
-  .peta span { display: inline-block; width: 9px; height: 9px; margin: 1px; border-radius: 2px; background: #e5ded7; }
-  .peta span.L { background: #2e7d32; }
+  .peta { margin-top: 4px; display: grid; grid-template-columns: repeat(5, 17px); gap: 2px; }
+  .peta span { width: 17px; height: 17px; border-radius: 3px; background: #e5ded7; color: #7a6a5c;
+               font-size: 9px; line-height: 17px; text-align: center; font-weight: bold; font-family: Arial, sans-serif; }
+  .peta span.L { background: #2e7d32; color: #fff; }
+  .petaRingkas { margin-top: 4px; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .peta.sebaris { display: flex; flex-wrap: wrap; margin-top: 0; }
+  .jmlJuz { font-size: 12px; color: var(--oren-tua); font-weight: bold; white-space: nowrap; }
+  .jmlJuz.kosong { color: #8a7a6c; font-weight: normal; }
+  #rTabel .peta:not(.sebaris) { cursor: pointer; }
+  .peta span.S { color: #1f4d22; }
+  .peta span.H { color: #5c4300; }
   .peta span.S { background: #8bc58e; }
   .peta span.H { background: #f2c94c; }
   .kotak { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
@@ -1069,6 +1077,7 @@
            (k.length > 3 ? '<br><button type="button" class="tambahR2 sebaris" onclick="lihatKomT(' + ix + ',' + !semua + ')">' +
                            (semua ? 'ringkas' : 'lihat semua (' + k.length + ')') + '</button>' : '') + '</div>';
   }
+  function bukaPeta(ix) { el('petaP' + ix).classList.toggle('tersembunyi'); }
   function lihatKomT(ix, semua) { el('komT' + ix).innerHTML = komentarRekapT(ix, semua); }
   async function muatRekap() {
     hapusPesan('rPesan');
@@ -1093,11 +1102,18 @@
         });
         h += '</table><p class="catatan">Merah = kehadiran sekolah di bawah 80%.</p>';
       } else if (MODUL === 'tahfiz') {
-        h = '<table><tr><th>Nama &amp; peta 30 juz</th><th>Ziyadah</th><th>Pekan setor</th><th>Murojaah</th><th>Tasmi\'</th></tr>';
+        h = '<table><tr><th>Nama &amp; juz hafalan</th><th>Ziyadah</th><th>Pekan setor</th><th>Murojaah</th><th>Tasmi\'</th></tr>';
         KOM_T = {};
         data.forEach(function (x, ix) {
           KOM_T[ix] = x.komentar || [];
-          const peta = '<div class="peta">' + x.peta.map(function (s, j) { return '<span class="' + s + '" title="Juz ' + (j + 1) + '"></span>'; }).join('') + '</div>';
+          // Ringkas: hanya juz berwarna + "n/30 juz"; ketuk untuk membuka peta lengkap 30 kotak
+          const kotak = function (s, j) { return '<span class="' + s + '" title="Juz ' + (j + 1) + '">' + (j + 1) + '</span>'; };
+          const ada = x.peta.map(function (s, j) { return s ? kotak(s, j) : ''; }).join('');
+          const n = x.peta.filter(function (s) { return s; }).length;
+          const peta = '<div class="petaRingkas" onclick="bukaPeta(' + ix + ')" title="Ketuk untuk melihat peta 30 juz">' +
+                       (n ? '<span class="peta sebaris">' + ada + '</span><span class="jmlJuz">' + n + '/30 juz ▾</span>'
+                          : '<span class="jmlJuz kosong">belum ada hafalan tercatat ▾</span>') + '</div>' +
+                       '<div class="peta tersembunyi" id="petaP' + ix + '" onclick="bukaPeta(' + ix + ')">' + x.peta.map(kotak).join('') + '</div>';
           h += '<tr><td>' + esc(x.nama) + peta + '<div id="komT' + ix + '">' + komentarRekapT(ix, false) + '</div></td><td>' + x.halaman + ' hal.<br><span class="catatan">terakhir: ' + (x.terakhir === '' ? '-' : x.terakhir) +
                '</span></td><td class="' + (x.minggu && x.mingguSetor < x.minggu ? 'rendah' : '') + '">' + x.mingguSetor + '/' + x.minggu +
                '</td><td>' + x.murojaah + '×</td><td>' + x.juzLulus + ' juz lulus<br><span class="catatan">' + x.tasmi + '× tasmi\'</span></td></tr>';
@@ -1105,7 +1121,7 @@
         h += '</table><p class="catatan">Peta 30 juz: <span class="kotak" style="background:#2e7d32"></span>lulus tasmi\' ' +
              '<span class="kotak" style="background:#8bc58e"></span>sebagian lulus ' +
              '<span class="kotak" style="background:#f2c94c"></span>sudah dihafal, belum tasmi\' ' +
-             '<span class="kotak" style="background:#e5ded7"></span>belum. Merah = ada pekan tanpa setoran.' +
+             '<span class="kotak" style="background:#e5ded7"></span>belum. Ketuk "n/30 juz" untuk melihat peta lengkap. Merah = ada pekan tanpa setoran.' +
              (dariR || sampaiR ? '<br>Peta 30 juz dan jumlah juz lulus dihitung dari semua data (status hafalan); kolom lain mengikuti tanggal yang dipilih.' : '') + '</p>';
       } else {
         h = '<table><tr><th>Nama</th><th>Hadir</th><th>Izin</th><th>Sakit</th><th>Alpa</th></tr>';
