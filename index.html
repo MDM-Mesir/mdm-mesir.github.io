@@ -74,6 +74,7 @@
   .semuaHadir { color: #2e7d32; font-weight: bold; }
   p.cepat { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
   p.cepat button { padding: 6px 10px; font-size: 13px; }
+  .labelRentang { font-size: 13px; font-weight: bold; color: var(--oren-tua); margin: 6px 0 4px; }
   .grupSyaqqoh { margin: 16px 0 6px; font-weight: bold; color: #8a3b1f; border-bottom: 2px solid #ecd9cf; padding-bottom: 3px; }
   details.santri { border: 1px solid #ecd9cf; border-radius: 10px; margin: 6px 0; background: #fffaf7; }
   details.santri summary { padding: 8px 10px; cursor: pointer; list-style: none; }
@@ -325,6 +326,17 @@
         <label>Banin / banat</label>
         <div id="rKategori" class="centang pilihKategori"></div>
       </div>
+      <div id="rFilterRentang" class="tersembunyi">
+        <div class="duaKolom">
+          <div><label>Dari tanggal</label><input id="rDariR" class="penuh" type="date"></div>
+          <div><label>Sampai tanggal</label><input id="rSampaiR" class="penuh" type="date"></div>
+        </div>
+        <p class="cepat">
+          <button class="kedua" onclick="isiRentang('pekan')">Pekan ini</button>
+          <button class="kedua" onclick="isiRentang('bulan')">Bulan ini</button>
+          <button class="kedua" onclick="isiRentang('semua')">Semua</button>
+        </p>
+      </div>
       <p><button class="kedua penuh" onclick="muatRekap()">Tampilkan rekap</button></p>
       <div id="rTabel"></div>
       <div id="rPesan" class="pesan"></div>
@@ -418,6 +430,7 @@
     el('rFilterHarian').classList.toggle('tersembunyi', m !== 'harian');
     el('rFilterPeriode').classList.toggle('tersembunyi', m !== 'periode');
     el('rFilterKelas').classList.toggle('tersembunyi', !!ABSEN[m] || m === 'harian' || m === 'periode');
+    el('rFilterRentang').classList.toggle('tersembunyi', m === 'harian' || m === 'periode');
     if (m === 'periode') { el('rTabel').innerHTML = ''; hapusPesan('rPesan'); if (!val('rDari')) isiPeriode('bulan'); return; }
     el('rFilterBimbel').classList.toggle('tersembunyi', !ABSEN[m]);
     if (m === 'harian') { el('rTabel').innerHTML = ''; hapusPesan('rPesan'); return; }
@@ -1063,10 +1076,12 @@
     if (MODUL === 'harian') return muatHarian();
     if (MODUL === 'periode') return muatPeriode();
     const fungsi = { mingguan: 'rekapMingguan', tahfiz: 'rekapTahfiz', bimbel: 'rekapBimbel', kelas: 'rekapKelas' }[MODUL];
+    const dariR = val('rDariR'), sampaiR = val('rSampaiR');
+    if (dariR && sampaiR && dariR > sampaiR) { pesan('rPesan', 'Tanggal "dari" harus sebelum tanggal "sampai".', false); return; }
     try {
       const data = ABSEN[MODUL]
-        ? await panggil(fungsi, TOKEN, dicentang('rAngkatan'), dicentang('rKategori'))
-        : await panggil(fungsi, TOKEN, val('rKelas'));
+        ? await panggil(fungsi, TOKEN, dicentang('rAngkatan'), dicentang('rKategori'), dariR, sampaiR)
+        : await panggil(fungsi, TOKEN, val('rKelas'), dariR, sampaiR);
       if (!data.length) { el('rTabel').innerHTML = '<p>Belum ada santri.</p>'; return; }
       let h;
       if (MODUL === 'mingguan') {
@@ -1090,7 +1105,8 @@
         h += '</table><p class="catatan">Peta 30 juz: <span class="kotak" style="background:#2e7d32"></span>lulus tasmi\' ' +
              '<span class="kotak" style="background:#8bc58e"></span>sebagian lulus ' +
              '<span class="kotak" style="background:#f2c94c"></span>sudah dihafal, belum tasmi\' ' +
-             '<span class="kotak" style="background:#e5ded7"></span>belum. Merah = ada pekan tanpa setoran.</p>';
+             '<span class="kotak" style="background:#e5ded7"></span>belum. Merah = ada pekan tanpa setoran.' +
+             (dariR || sampaiR ? '<br>Peta 30 juz dan jumlah juz lulus dihitung dari semua data (status hafalan); kolom lain mengikuti tanggal yang dipilih.' : '') + '</p>';
       } else {
         h = '<table><tr><th>Nama</th><th>Hadir</th><th>Izin</th><th>Sakit</th><th>Alpa</th></tr>';
         data.forEach(function (x) {
@@ -1101,11 +1117,24 @@
         h += '</table><p class="catatan">Merah = kehadiran ' + (MODUL === 'kelas' ? 'bimbel' : 'Dars Turath') + ' di bawah 80%. ' +
              (UTAMA ? 'Semua pertemuan dari semua guru.' : 'Hanya pertemuan yang Anda ajar.') + '</p>';
       }
-      el('rTabel').innerHTML = h;
+      el('rTabel').innerHTML = '<div class="labelRentang">' + labelRentang(dariR, sampaiR) + '</div>' + h;
     } catch (e) { gagalUmum('rPesan')(e); }
   }
 
   // Rekap periode (Admin Utama: semua syaqqoh; Musyrif/ah: syaqqoh sendiri): semua bagian untuk setiap santri dalam rentang tanggal
+  function rentangCepat(jenis) {
+    const k = new Date();
+    if (jenis === 'pekan') { const a = new Date(k); a.setDate(k.getDate() - (k.getDay() + 1) % 7); const z = new Date(a); z.setDate(a.getDate() + 5); return [iso(a), iso(z)]; }
+    if (jenis === 'bulan') return [iso(new Date(k.getFullYear(), k.getMonth(), 1)), iso(new Date(k.getFullYear(), k.getMonth() + 1, 0))];
+    return ['', ''];
+  }
+  function isiRentang(jenis) { const r = rentangCepat(jenis); el('rDariR').value = r[0]; el('rSampaiR').value = r[1]; muatRekap(); }
+  function labelRentang(a, z) {
+    const lengkap = function (t) { const p = t.split('-'); return tgl(t) + ' ' + p[0]; };
+    if (!a && !z) return '📅 Semua data';
+    if (a && z) return '📅 ' + (a.slice(0, 4) === z.slice(0, 4) ? tgl(a) : lengkap(a)) + ' – ' + lengkap(z);
+    return a ? '📅 Sejak ' + lengkap(a) : '📅 Sampai ' + lengkap(z);
+  }
   function isiPeriode(jenis) {
     const k = new Date();
     let a, z;
