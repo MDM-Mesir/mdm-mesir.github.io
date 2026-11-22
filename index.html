@@ -108,6 +108,18 @@
   .kredit a { color: inherit; }
   input.komentar { width: 100%; min-width: 140px; box-sizing: border-box; }
   td input.kecil { width: 58px; }
+  .tambahR2 { background: none; border: 0; color: var(--oren); font-size: 12px; padding: 2px 0; margin-top: 2px; cursor: pointer; width: auto; }
+  .tambahR2:hover, .hapusR2:hover { background: none; text-decoration: underline; }
+  tr.baris2 td { border-top: 0; padding-top: 0; }
+  .tambahR2 { display: block; }
+  tr.baris2 .ketK { padding: 0 6px 8px 14px; }
+  .pilihK { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .pilihK button { background: var(--oren-muda); color: var(--oren-tua); border-radius: 14px; padding: 4px 10px; font-size: 12px; width: auto; }
+  .pilihK button:hover { background: #efd3c4; }
+  .pilihK .hapusR2 { background: none; margin-left: auto; }
+  td input.komentarT { width: 100%; box-sizing: border-box; }
+  tr.baris2 .ket2 { font-size: 12px; color: #6b5a4a; padding-left: 14px; }
+  .hapusR2 { background: none; border: 0; color: #a33; font-size: 13px; padding: 0 4px; cursor: pointer; width: auto; }
   hr.pisah { border: none; border-top: 2px dashed #ecd9cf; margin: 18px 0 10px; }
   .duaKolom { display: flex; gap: 8px; }
   .duaKolom > div { flex: 1; }
@@ -690,19 +702,46 @@
       if (!DATA_T.length) { el('tTabel').innerHTML = '<p>Belum ada santri di syaqqoh ini.</p>'; return; }
       let h = bannerPekan(d, 'tahfiz') + '<table><tr><th>Nama</th><th>Hal. awal</th><th>Hal. akhir</th><th>Murojaah<br><small>(kali)</small></th></tr>';
       DATA_T.forEach(function (s, i) {
-        h += '<tr><td>' + esc(s.nama) + '</td><td>' + angka('a' + i, s.awal) + '</td><td>' + angka('z' + i, s.akhir) +
-             '</td><td><input id="mj' + i + '" class="kecil" type="number" min="0" max="50" inputmode="numeric" value="' + esc(s.murojaah) + '"></td></tr>';
+        const ada2 = String(s.awal2 || '') !== '';
+        const adaK = String(s.komentar || '') !== '';
+        h += '<tr><td>' + esc(s.nama) + '<br><button type="button" class="tambahR2' + (ada2 ? ' tersembunyi' : '') + '" id="tb2' + i + '" onclick="bukaRentang2(' + i + ')">＋ Rentang 2</button>' +
+             '<button type="button" class="tambahR2' + (adaK ? ' tersembunyi' : '') + '" id="tbk' + i + '" onclick="bukaKomentarT(' + i + ')">＋ Komentar</button>' +
+             '</td><td>' + angka('a' + i, s.awal) + '</td><td>' + angka('z' + i, s.akhir) +
+             '</td><td><input id="mj' + i + '" class="kecil" type="number" min="0" max="50" inputmode="numeric" value="' + esc(s.murojaah) + '"></td></tr>' +
+             '<tr id="r2' + i + '" class="baris2' + (ada2 ? '' : ' tersembunyi') + '"><td class="ket2">Rentang 2 <small>(tempat lain)</small> ' +
+             '<button type="button" class="hapusR2" title="Hapus rentang 2" onclick="tutupRentang2(' + i + ')">✕</button></td><td>' +
+             angka('a2' + i, s.awal2 || '') + '</td><td>' + angka('z2' + i, s.akhir2 || '') + '</td><td></td></tr>' +
+             '<tr id="rk' + i + '" class="baris2' + (adaK ? '' : ' tersembunyi') + '"><td colspan="4" class="ketK">' +
+             '<div class="pilihK">' + ['Sakit', 'Izin', 'Pulang', 'Tidak setor'].map(function (t) {
+               return '<button type="button" onclick="isiKomentarT(' + i + ',\'' + t + '\')">' + t + '</button>';
+             }).join('') + '<button type="button" class="hapusR2" title="Hapus komentar" onclick="tutupKomentarT(' + i + ')">✕</button></div>' +
+             '<input id="kt' + i + '" class="komentarT" type="text" maxlength="300" placeholder="Komentar (misalnya: sakit, tidak setor)" value="' + esc(s.komentar || '') + '"></td></tr>';
       });
       h += '</table><p class="catatan">Kosongkan jika santri tidak setor pekan ini. Setor satu halaman: cukup isi halaman awal. ' +
-           'Murojaah = berapa kali santri murojaah dalam pekan ini (boleh dikosongkan).</p>' +
+           'Murojaah = berapa kali santri murojaah dalam pekan ini (boleh dikosongkan). ' +
+           'Jika santri setor di dua tempat berbeda, ketuk <b>＋ Rentang 2</b>. Untuk alasan tidak setor / tidak murojaah (sakit, izin, dll.), ketuk <b>＋ Komentar</b>.</p>' +
            (d.boleh ? '<p><button id="tombolT" class="penuh" onclick="simpanTahfiz()">' + (d.info ? 'Simpan perubahan' : 'Simpan setoran') + '</button></p>' : '');
       el('tTabel').innerHTML = h;
     } catch (e) { gagalUmum('tPesan')(e); }
   }
 
+  function bukaRentang2(i) { el('r2' + i).classList.remove('tersembunyi'); el('tb2' + i).classList.add('tersembunyi'); el('a2' + i).focus(); }
+  function tutupRentang2(i) {
+    el('a2' + i).value = ''; el('z2' + i).value = '';
+    el('r2' + i).classList.add('tersembunyi'); el('tb2' + i).classList.remove('tersembunyi');
+  }
+  function bukaKomentarT(i) { el('rk' + i).classList.remove('tersembunyi'); el('tbk' + i).classList.add('tersembunyi'); el('kt' + i).focus(); }
+  function tutupKomentarT(i) { el('kt' + i).value = ''; el('rk' + i).classList.add('tersembunyi'); el('tbk' + i).classList.remove('tersembunyi'); }
+  function isiKomentarT(i, t) {
+    const k = el('kt' + i), v = k.value.trim();
+    k.value = v ? (v.toLowerCase().indexOf(t.toLowerCase()) >= 0 ? v : v + ', ' + t.toLowerCase()) : t;
+    k.focus();
+  }
   function simpanTahfiz() {
     hapusPesan('tPesan');
-    const isian = DATA_T.map(function (s, i) { return { nama: s.nama, awal: val('a' + i), akhir: val('z' + i), murojaah: val('mj' + i) }; });
+    const isian = DATA_T.map(function (s, i) {
+      return { nama: s.nama, awal: val('a' + i), akhir: val('z' + i), awal2: val('a2' + i), akhir2: val('z2' + i), murojaah: val('mj' + i), komentar: val('kt' + i) };
+    });
     sibuk(el('tombolT'), async function () {
       const asal = asalPekan('tahfiz', 'tKelas', 'tMinggu');
       if (asal === false) return;
@@ -1108,6 +1147,9 @@
                  ' halaman (' + x.tahfiz.pekan + ' pekan dilaporkan)</div><div>Murojaah: ' + x.tahfiz.murojaah + ' kali</div>' : '<div class="catatan">Belum ada setoran.</div>';
         s5 += '<div>Tasmi\': ' + (x.tasmi.length ? x.tasmi.map(function (t) { return tgl(t.tanggal) + ' hal. ' + t.awal + '–' + t.akhir + ' (' + esc(t.predikat) + ')'; }).join('; ') +
               ' · ' + x.juzLulus + ' juz lulus' : '-') + '</div>';
+        const kt = (x.tahfiz.komentar || []).slice().sort(function (a, b) { return a.pekan < b.pekan ? -1 : 1; });
+        if (kt.length) s5 += '<div class="catatan" style="margin-top:4px">Komentar tahfiz:</div><ul class="daftarAbsen">' +
+          kt.map(function (k) { return '<li>' + tgl(k.pekan) + ': ' + esc(k.isi) + '</li>'; }).join('') + '</ul>';
         h += bagian(5, 'Tahfiz', s5);
         if (x.saldoKeu !== undefined) h += bagian(6, 'Keuangan', '<div>Sisa saldo per ' + tgl(val('rSampai')) + ': <b>' + egp(x.saldoKeu) + '</b>' +
           (d.kurs > 0 ? ' (≈ Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(x.saldoKeu * d.kurs)) + ')' : '') + '</div>');
@@ -1264,6 +1306,11 @@
     } else b.push({ j: 'catatan', teks: 'Belum ada setoran.' });
     const tasmiT = 'Tasmi\': ' + (x.tasmi.length ? x.tasmi.map(function (t) { return tgl(t.tanggal) + ' hal. ' + t.awal + '–' + t.akhir + ' (' + t.predikat + ')'; }).join('; ') + ' · ' + x.juzLulus + ' juz lulus' : '-');
     b.push({ j: 'teks', teks: tasmiT });
+    const ktG = (x.tahfiz.komentar || []).slice().sort(function (p, q) { return p.pekan < q.pekan ? -1 : 1; });
+    if (ktG.length) {
+      b.push({ j: 'catatan', teks: 'Komentar tahfiz:' });
+      ktG.forEach(function (k) { b.push({ j: 'teks', teks: '• ' + tgl(k.pekan) + ': ' + k.isi, ind: 10 }); });
+    }
     if (x.saldoKeu !== undefined) {
       b.push({ j: 'bagian', no: 6, teks: 'Keuangan' });
       b.push({ j: 'teks', teks: 'Sisa saldo per ' + tgl(PERIODE_LABEL[1]) + ': ' + egp(x.saldoKeu) +
